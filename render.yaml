@@ -5,7 +5,7 @@ services:
     name: mynews
     env: node
     plan: free
-    region: oregon       # closest free region; you can change to frankfurt/singapore/etc.
+    region: frankfurt    # ~150ms RTT from South Africa vs ~300ms from Oregon
     buildCommand: npm install
     startCommand: npm start
     healthCheckPath: /api/status
