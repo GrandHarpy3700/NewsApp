@@ -1,0 +1,24 @@
+# Dependencies
+node_modules/
+
+# Environment & secrets
+.env
+.env.local
+.env.*.local
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+*.swp
+
+# Build output is COMMITTED on purpose so static hosts (Netlify) can serve it,
+# but if you deploy via Render with the Node server, server.js will rebuild it
+# on every boot. Either way it's fine to commit.

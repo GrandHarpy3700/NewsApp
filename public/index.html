@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>MyNews — Your Personal News Hub</title>
+
+  <!-- PWA -->
+  <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#4F46E5" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="MyNews" />
+  <link rel="apple-touch-icon" href="icon.svg" />
+  <link rel="icon" type="image/svg+xml" href="icon.svg" />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Source+Serif+4:opsz,wght@8..60,500;8..60,600;8..60,700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css?v=19" />
+</head>
+<body>
+
+  <!-- Mobile overlay -->
+  <div class="overlay" id="overlay"></div>
+
+  <div class="app">
+
+    <!-- ── Sidebar ── -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <div class="logo">
+          <span class="logo-icon">📰</span>
+          <span class="logo-name">MyNews</span>
+        </div>
+        <button class="sidebar-close" id="sidebarClose" aria-label="Close menu">✕</button>
+      </div>
+
+      <div class="live-indicator">
+        <span class="live-dot"></span>
+        <span>Live Feed</span>
+      </div>
+
+      <nav class="nav">
+        <p class="nav-label">Categories</p>
+        <ul class="nav-list" id="navList">
+          <!-- Injected by JS -->
+        </ul>
+      </nav>
+
+      <div class="sidebar-footer">
+        <button class="theme-btn" id="themeBtn">
+          <span class="theme-icon">🌙</span>
+          <span class="theme-text">Dark Mode</span>
+        </button>
+        <p class="version">Powered by RSS</p>
+      </div>
+    </aside>
+
+    <!-- ── Main ── -->
+    <main class="main">
+
+      <!-- Header -->
+      <header class="header">
+        <div class="header-left">
+          <button class="menu-btn" id="menuBtn" aria-label="Open menu">☰</button>
+          <h2 class="header-title" id="headerTitle">Global News</h2>
+        </div>
+        <div class="header-center">
+          <form class="search-form" id="searchForm">
+            <span class="search-icon">🔍</span>
+            <input
+              class="search-input"
+              id="searchInput"
+              type="search"
+              placeholder="Search any topic…"
+              autocomplete="off"
+            />
+            <button class="search-btn" type="submit">Search</button>
+          </form>
+        </div>
+        <div class="header-right">
+          <div class="refresh-timer" id="refreshTimer" title="Next auto-refresh">
+            <span class="refresh-icon">🔄</span>
+            <span id="timerText">5:00</span>
+          </div>
+          <button class="refresh-now-btn" id="refreshNowBtn" title="Refresh now">↻</button>
+        </div>
+      </header>
+
+      <!-- Content -->
+      <div class="content">
+
+        <!-- Breaking news ticker -->
+        <div class="ticker-wrap" id="tickerWrap" hidden>
+          <div class="ticker-label">🔴 BREAKING</div>
+          <div class="ticker-content">
+            <div class="ticker-track" id="tickerTrack"></div>
+          </div>
+        </div>
+
+        <!-- Stats bar -->
+        <div class="stats-bar" id="statsBar">
+          <span id="statsText">Loading news…</span>
+          <span class="fetch-time" id="fetchTime"></span>
+        </div>
+
+        <!-- News grid -->
+        <div class="news-grid" id="newsGrid"></div>
+
+        <!-- Skeleton loading -->
+        <div class="skeleton-grid" id="skeletonGrid">
+          <div class="skeleton-card" aria-hidden="true">
+            <div class="skel skel-img"></div>
+            <div class="skel-body">
+              <div class="skel skel-line w-40"></div>
+              <div class="skel skel-line w-100"></div>
+              <div class="skel skel-line w-80"></div>
+              <div class="skel skel-line w-60"></div>
+            </div>
+          </div>
+          <div class="skeleton-card" aria-hidden="true">
+            <div class="skel skel-img"></div>
+            <div class="skel-body">
+              <div class="skel skel-line w-40"></div>
+              <div class="skel skel-line w-100"></div>
+              <div class="skel skel-line w-80"></div>
+              <div class="skel skel-line w-60"></div>
+            </div>
+          </div>
+          <div class="skeleton-card" aria-hidden="true">
+            <div class="skel skel-img"></div>
+            <div class="skel-body">
+              <div class="skel skel-line w-40"></div>
+              <div class="skel skel-line w-100"></div>
+              <div class="skel skel-line w-80"></div>
+              <div class="skel skel-line w-60"></div>
+            </div>
+          </div>
+          <div class="skeleton-card" aria-hidden="true">
+            <div class="skel skel-img"></div>
+            <div class="skel-body">
+              <div class="skel skel-line w-40"></div>
+              <div class="skel skel-line w-100"></div>
+              <div class="skel skel-line w-80"></div>
+              <div class="skel skel-line w-60"></div>
+            </div>
+          </div>
+          <div class="skeleton-card" aria-hidden="true">
+            <div class="skel skel-img"></div>
+            <div class="skel-body">
+              <div class="skel skel-line w-40"></div>
+              <div class="skel skel-line w-100"></div>
+              <div class="skel skel-line w-80"></div>
+              <div class="skel skel-line w-60"></div>
+            </div>
+          </div>
+          <div class="skeleton-card" aria-hidden="true">
+            <div class="skel skel-img"></div>
+            <div class="skel-body">
+              <div class="skel skel-line w-40"></div>
+              <div class="skel skel-line w-100"></div>
+              <div class="skel skel-line w-80"></div>
+              <div class="skel skel-line w-60"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Error state -->
+        <div class="error-state" id="errorState" hidden>
+          <div class="error-icon">😕</div>
+          <h3 id="errorTitle">Couldn't load news</h3>
+          <p id="errorMsg">Please check your connection and try again.</p>
+          <button class="retry-btn" id="retryBtn">Try Again</button>
+        </div>
+
+        <!-- Empty state -->
+        <div class="empty-state" id="emptyState" hidden>
+          <div class="empty-icon">🗞️</div>
+          <h3>No articles found</h3>
+          <p id="emptyMsg">Try a different search term or category.</p>
+        </div>
+
+        <!-- Load more -->
+        <div class="load-more-wrap" id="loadMoreWrap" hidden>
+          <button class="load-more-btn" id="loadMoreBtn">Load More Stories</button>
+        </div>
+
+      </div>
+    </main>
+  </div>
+
+  <!-- Toast & shortcuts overlay containers -->
+  <div class="toast-container" id="toastContainer" aria-live="polite"></div>
+  <button class="scroll-top-btn" id="scrollTopBtn" aria-label="Scroll to top" type="button">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M12 19V5M5 12l7-7 7 7"/>
+    </svg>
+  </button>
+  <div class="shortcuts-overlay" id="shortcutsOverlay" hidden>
+    <div class="shortcuts-modal">
+      <div class="shortcuts-head">
+        <h3>Keyboard Shortcuts</h3>
+        <button class="shortcuts-close" id="shortcutsClose" aria-label="Close">✕</button>
+      </div>
+      <div class="shortcuts-body">
+        <div class="kbd-row"><span><kbd>/</kbd></span><span>Focus search</span></div>
+        <div class="kbd-row"><span><kbd>Esc</kbd></span><span>Clear search / close menus</span></div>
+        <div class="kbd-row"><span><kbd>R</kbd></span><span>Refresh news</span></div>
+        <div class="kbd-row"><span><kbd>T</kbd></span><span>Toggle dark/light mode</span></div>
+        <div class="kbd-row"><span><kbd>S</kbd></span><span>Open Saved</span></div>
+        <div class="kbd-row"><span><kbd>1</kbd>–<kbd>9</kbd></span><span>Switch category</span></div>
+        <div class="kbd-row"><span><kbd>?</kbd></span><span>Show this help</span></div>
+      </div>
+    </div>
+  </div>
+  <script src="app.js?v=19"></script>
+</body>
+</html>

@@ -1,0 +1,12 @@
+# Render.com Blueprint — defines how to deploy this app.
+# When you connect this repo to Render, this file is read automatically.
+services:
+  - type: web
+    name: mynews
+    env: node
+    plan: free
+    region: oregon       # closest free region; you can change to frankfurt/singapore/etc.
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /api/status
+    autoDeploy: true
