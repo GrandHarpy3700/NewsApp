@@ -20,5 +20,5 @@ jobs:
         run: |
           echo "Pinging at $(date -u)"
           # -f fails on HTTP 4xx/5xx, -s silent, -S still shows errors, --max-time caps wait
-          curl -fsS --max-time 60 https://mynews-ogzr.onrender.com/api/status -o /dev/null
+          curl -fsS --max-time 60 https://mynews-h1ii.onrender.com/api/status -o /dev/null
           echo "OK"
