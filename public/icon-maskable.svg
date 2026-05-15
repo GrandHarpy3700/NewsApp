@@ -1,51 +1,30 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <defs>
-    <linearGradient id="bgM" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%"  stop-color="#4F46E5"/>
-      <stop offset="55%" stop-color="#6D28D9"/>
-      <stop offset="100%" stop-color="#9333EA"/>
-    </linearGradient>
-  </defs>
+  <!-- Maskable icons need a full-bleed background — Android masks the shape -->
+  <rect width="512" height="512" fill="#F1F5F9"/>
 
-  <!-- Full-bleed background — Android adaptive icon mask is applied later -->
-  <rect width="512" height="512" fill="url(#bgM)"/>
+  <!-- Newspaper kept inside the 80% safe zone so nothing gets cropped -->
+  <g transform="translate(112 130)">
+    <rect width="288" height="252" rx="8" fill="#FFFFFF" stroke="#0F172A" stroke-width="5"/>
 
-  <!-- Keep all content inside the safe zone (centered 80% = 102 to 410) -->
-  <g transform="translate(256 256) translate(-115 -100)">
-    <rect width="230" height="200" rx="7" fill="#FFFFFF"/>
-    <rect x="0"  y="0"  width="230" height="3"  fill="#0F172A"/>
+    <!-- Masthead -->
+    <rect x="0" y="0" width="288" height="62" fill="#0F172A"/>
+    <text x="144" y="44" font-family="'Source Serif 4', Georgia, serif"
+          font-size="40" font-weight="900" fill="#FFFFFF"
+          text-anchor="middle" letter-spacing="2.5">NEWS</text>
 
-    <text x="115" y="42" font-family="'Source Serif 4', Georgia, serif"
-          font-size="30" font-weight="900" fill="#0F172A"
-          text-anchor="middle" letter-spacing="-1">News</text>
+    <!-- Headline -->
+    <rect x="22" y="78"  width="244" height="16" rx="3" fill="#0F172A"/>
+    <rect x="22" y="102" width="160" height="16" rx="3" fill="#0F172A"/>
 
-    <line x1="18" y1="56" x2="212" y2="56" stroke="#0F172A" stroke-width="0.75"/>
+    <!-- Image -->
+    <rect x="22" y="136" width="110" height="80" rx="4" fill="#94A3B8"/>
 
-    <!-- Column 1: image -->
-    <rect x="14"  y="74"  width="90" height="56" rx="3" fill="#CBD5E1"/>
-    <rect x="14"  y="138" width="90" height="5"  rx="1.5" fill="#475569"/>
-    <rect x="14"  y="148" width="74" height="5"  rx="1.5" fill="#94A3B8"/>
-    <rect x="14"  y="158" width="90" height="5"  rx="1.5" fill="#94A3B8"/>
-    <rect x="14"  y="168" width="62" height="5"  rx="1.5" fill="#94A3B8"/>
-    <rect x="14"  y="178" width="90" height="5"  rx="1.5" fill="#94A3B8"/>
-
-    <!-- Column 2: headline + body -->
-    <rect x="118" y="74"  width="98" height="8"  rx="2" fill="#0F172A"/>
-    <rect x="118" y="86"  width="82" height="8"  rx="2" fill="#0F172A"/>
-    <rect x="118" y="102" width="98" height="5"  rx="1.5" fill="#94A3B8"/>
-    <rect x="118" y="112" width="80" height="5"  rx="1.5" fill="#94A3B8"/>
-    <rect x="118" y="122" width="98" height="5"  rx="1.5" fill="#94A3B8"/>
-    <rect x="118" y="132" width="98" height="5"  rx="1.5" fill="#94A3B8"/>
-    <rect x="118" y="142" width="70" height="5"  rx="1.5" fill="#94A3B8"/>
-    <rect x="118" y="152" width="98" height="5"  rx="1.5" fill="#94A3B8"/>
-    <rect x="118" y="162" width="58" height="5"  rx="1.5" fill="#94A3B8"/>
-    <rect x="118" y="172" width="98" height="5"  rx="1.5" fill="#94A3B8"/>
-    <rect x="118" y="182" width="50" height="5"  rx="1.5" fill="#94A3B8"/>
-
-    <!-- Red breaking ribbon -->
-    <rect x="170" y="-12" width="62" height="24" rx="4" fill="#EF4444"/>
-    <text x="201" y="4" font-family="system-ui, sans-serif"
-          font-size="9" font-weight="800" fill="#FFFFFF"
-          text-anchor="middle" letter-spacing="1">NEW</text>
+    <!-- Body -->
+    <rect x="148" y="136" width="118" height="9" rx="2" fill="#94A3B8"/>
+    <rect x="148" y="151" width="118" height="9" rx="2" fill="#94A3B8"/>
+    <rect x="148" y="166" width="100" height="9" rx="2" fill="#94A3B8"/>
+    <rect x="148" y="181" width="118" height="9" rx="2" fill="#94A3B8"/>
+    <rect x="148" y="196" width="80"  height="9" rx="2" fill="#94A3B8"/>
+    <rect x="22"  y="226" width="244" height="9" rx="2" fill="#94A3B8"/>
   </g>
 </svg>

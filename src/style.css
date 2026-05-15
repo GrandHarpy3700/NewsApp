@@ -87,7 +87,7 @@ input, button { font-family: inherit; }
   align-items: center;
   gap: 8px;
 }
-.logo-icon { font-size: 22px; }
+.logo-icon { width: 30px; height: 30px; border-radius: 7px; display: block; }
 .logo-name {
   font-size: 18px;
   font-weight: 700;
