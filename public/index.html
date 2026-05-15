@@ -17,7 +17,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Source+Serif+4:opsz,wght@8..60,500;8..60,600;8..60,700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="style.css?v=19" />
+  <link rel="stylesheet" href="style.css?v=20" />
 </head>
 <body>
 
@@ -190,6 +190,22 @@
     </main>
   </div>
 
+  <!-- First-run onboarding (preferences picker) -->
+  <div class="onboarding-overlay" id="onboardingOverlay" hidden>
+    <div class="onboarding-modal">
+      <div class="onboarding-head">
+        <div class="onboarding-icon">📰</div>
+        <h2>Welcome to MyNews</h2>
+        <p>Pick the topics you care about — they'll show up in your <strong>Home</strong> feed.</p>
+      </div>
+      <div class="onboarding-grid" id="onboardingGrid"></div>
+      <div class="onboarding-actions">
+        <button class="onboarding-skip" id="onboardingSkip" type="button">Skip for now</button>
+        <button class="onboarding-confirm" id="onboardingConfirm" type="button">Done</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Toast & shortcuts overlay containers -->
   <div class="toast-container" id="toastContainer" aria-live="polite"></div>
   <button class="scroll-top-btn" id="scrollTopBtn" aria-label="Scroll to top" type="button">
@@ -214,6 +230,6 @@
       </div>
     </div>
   </div>
-  <script src="app.js?v=19"></script>
+  <script src="app.js?v=20"></script>
 </body>
 </html>

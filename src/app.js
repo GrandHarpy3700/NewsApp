@@ -11,7 +11,7 @@
 const I18N = {
   en: {
     sidebar:    { liveFeed: 'Live Feed', categories: 'Categories', darkMode: 'Dark Mode', lightMode: 'Light Mode', footer: 'Powered by RSS' },
-    categories: { 'global':'Global News','south-africa':'South Africa','politics':'Politics','economy':'Economy','technology':'Technology','sports':'Sports','entertainment':'Entertainment','science':'Science','health':'Health','__saved__':'Saved' },
+    categories: { 'global':'Global News','south-africa':'South Africa','politics':'Politics','economy':'Economy','technology':'Technology','sports':'Sports','entertainment':'Entertainment','science':'Science','health':'Health','__saved__':'Saved','__home__':'Home' },
     search:     { placeholder: 'Search any topic…', button: 'Search', recentSearches: 'Recent searches', clearAll: 'Clear all', label: 'Search' },
     card:       { readArticle: 'Read article', read: '✓ Read', minRead: 'min read', breaking: 'Breaking', new: 'New' },
     stats:      { articles: 'articles', loading: 'Loading news…', updated: 'Updated', justNow: 'just now', lessThanMinAgo: '<1 min ago', minAgo: 'min ago', hAgo: 'h ago' },
@@ -20,6 +20,8 @@ const I18N = {
       noResultsSearch: (q) => `No articles found for "${q}". Try a different keyword — news feeds only cover current events from the past few days.`,
       noArticles:     'No articles available right now. Try the Refresh button.',
       nothingSaved:   'Nothing saved yet. Tap the ★ on any article to save it for later.',
+      noHomePrefs:    'Pick your topics to start seeing personalized news here.',
+      chooseTopics:   'Choose your topics',
       errorTitle:     "Couldn't load news",
       errorMsg:       'Please check your connection and try again.',
       retry:          'Try Again',
@@ -119,6 +121,51 @@ const Bookmarks = {
   },
 };
 
+// ── Topic preferences for the Home feed ──
+// Each preference points to ONE category and may filter that category's articles
+// by an includeRe (must match) and/or excludeRe (must not match) regex run on
+// title + description.  Home merges all selected preferences into one feed.
+const PREFERENCES = [
+  { id: 'sa-news',         label: 'South African News',     emoji: '🇿🇦', category: 'south-africa' },
+  { id: 'global-news',     label: 'Global News',            emoji: '🌍', category: 'global' },
+  { id: 'sa-politics',     label: 'South African Politics', emoji: '🗳️', category: 'politics',
+    includeRe: /\b(south africa|south african|ramaphosa|anc|eff|da\b|gnu|parliament|gauteng|cape town|johannesburg|durban|pretoria|mk party)\b/i },
+  { id: 'global-politics', label: 'Global Politics',        emoji: '🏛️', category: 'politics',
+    excludeRe: /\b(south africa|south african|ramaphosa|gauteng|cape town|johannesburg|durban|pretoria|mk party)\b/i },
+  { id: 'sports',          label: 'Sports',                 emoji: '⚽', category: 'sports' },
+  { id: 'science',         label: 'Science',                emoji: '🔬', category: 'science' },
+  { id: 'films-series',    label: 'Films & Series',         emoji: '🎬', category: 'entertainment',
+    includeRe: /\b(film|movie|series|show|streaming|netflix|disney|hbo|prime video|hulu|cinema|trailer|premiere|episode|season|spinoff|reboot|sequel|director)\b/i },
+  { id: 'actors',          label: 'Actors',                 emoji: '🎭', category: 'entertainment',
+    includeRe: /\b(actor|actress|stars? in|starring|cast as|portrays|leading role)\b/i },
+  { id: 'artists',         label: 'Artists',                emoji: '🎵', category: 'entertainment',
+    includeRe: /\b(singer|musician|band|album|song|tour|concert|grammys?|billboard|spotify|playlist|hit single|rapper|pop star)\b/i },
+];
+
+const PrefStore = {
+  KEY: 'mynews:prefs',
+  ONBOARDED_KEY: 'mynews:onboarded',
+  _cache: null,
+  load() {
+    if (this._cache) return this._cache;
+    try { this._cache = JSON.parse(localStorage.getItem(this.KEY) || '[]'); }
+    catch { this._cache = []; }
+    return this._cache;
+  },
+  save(ids) {
+    this._cache = [...new Set(ids)];
+    try { localStorage.setItem(this.KEY, JSON.stringify(this._cache)); } catch {}
+  },
+  hasOnboarded() {
+    try { return localStorage.getItem(this.ONBOARDED_KEY) === '1'; }
+    catch { return false; }
+  },
+  setOnboarded(v = true) {
+    try { localStorage.setItem(this.ONBOARDED_KEY, v ? '1' : '0'); } catch {}
+  },
+  hasAny() { return this.load().length > 0; },
+};
+
 // ── Persistent: recent searches (max 8, newest first) ──
 const RecentSearches = {
   KEY: 'mynews:recent-searches',
@@ -168,7 +215,8 @@ class NewsApp {
   constructor() {
     this.lang = 'en';                                       // English-only UI
     document.documentElement.setAttribute('lang', this.lang);
-    this.category = 'global';
+    // Default to Home if the user has any preferences saved, else Global.
+    this.category = PrefStore.hasAny() ? '__home__' : 'global';
     this.allArticles = [];
     this.totalResults = 0;
     this.shownCount = 0;
@@ -225,6 +273,10 @@ class NewsApp {
     // Try to load category metadata from server (gives us the canonical list).
     await this.loadCategoryMetadata();
     this.renderNav();
+    // First-run: show the preferences picker BEFORE loading news.
+    if (!PrefStore.hasOnboarded()) {
+      this.openOnboarding(true);
+    }
     this.loadNews();
     this.startRefreshTimer();
     // Pre-warm OTHER categories in the background so switching is instant.
@@ -270,6 +322,67 @@ class NewsApp {
   t(section, key, ...args) {
     const v = I18N.en?.[section]?.[key];
     return typeof v === 'function' ? v(...args) : (v ?? '');
+  }
+
+  // ── Onboarding (first-run preferences picker) ──
+  openOnboarding(isFirstRun = false) {
+    const overlay = this.$('onboardingOverlay');
+    const grid = this.$('onboardingGrid');
+    if (!overlay || !grid) return;
+    const selected = new Set(PrefStore.load());
+
+    grid.innerHTML = PREFERENCES.map(p => `
+      <button class="pref-chip${selected.has(p.id) ? ' selected' : ''}" data-pref="${p.id}" type="button">
+        <span class="pref-chip-emoji">${p.emoji}</span>
+        <span>${this.escHtml(p.label)}</span>
+      </button>
+    `).join('');
+
+    grid.querySelectorAll('.pref-chip').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const id = btn.dataset.pref;
+        if (selected.has(id)) { selected.delete(id); btn.classList.remove('selected'); }
+        else { selected.add(id); btn.classList.add('selected'); }
+      });
+    });
+
+    const skipBtn = this.$('onboardingSkip');
+    const confirmBtn = this.$('onboardingConfirm');
+    skipBtn.textContent = isFirstRun ? 'Skip for now' : 'Cancel';
+    confirmBtn.textContent = isFirstRun ? 'Done' : 'Save';
+
+    // Replace listeners (idempotent re-open)
+    const skip = () => {
+      PrefStore.setOnboarded(true);
+      this.closeOnboarding();
+    };
+    const confirm = () => {
+      PrefStore.save([...selected]);
+      PrefStore.setOnboarded(true);
+      this.closeOnboarding();
+      this.renderNav();
+      // After saving prefs, jump straight to Home so the user sees the result.
+      this.openHome();
+      this.toast(selected.size > 0 ? `Saved ${selected.size} topic${selected.size === 1 ? '' : 's'}` : 'Preferences cleared', 'success');
+    };
+    skipBtn.onclick = skip;
+    confirmBtn.onclick = confirm;
+    overlay.hidden = false;
+  }
+  closeOnboarding() {
+    const overlay = this.$('onboardingOverlay');
+    if (overlay) overlay.hidden = true;
+  }
+  addHomeCustomizeButton() {
+    // Adds a "Choose your topics" call-to-action inside the empty-state.
+    if (this.$('homeCustomizeBtn')) return;
+    const btn = document.createElement('button');
+    btn.id = 'homeCustomizeBtn';
+    btn.className = 'home-cta';
+    btn.type = 'button';
+    btn.textContent = this.t('states', 'chooseTopics');
+    btn.addEventListener('click', () => this.openOnboarding(false));
+    this.els.emptyState.appendChild(btn);
   }
 
   // ── Pull-to-refresh (touch-only, no-op on desktop) ──
@@ -446,6 +559,9 @@ class NewsApp {
   }
 
   async fetchAllForCategory(catId, force = false) {
+    // Home is special: aggregate articles from every selected preference.
+    if (catId === '__home__') return this.fetchHomeFeed(force);
+
     // Server first (fast), rss2json fallback (only if server unreachable)
     if (this.serverAvailable !== false) {
       const items = await this.fetchCategoryFromServer(catId, force);
@@ -453,6 +569,55 @@ class NewsApp {
       this.serverAvailable = false;
     }
     return this.fetchCategoryFromRss2Json(catId);
+  }
+
+  // Build a personalized Home feed from the user's selected preferences.
+  // For each pref: fetch its underlying category, apply include/exclude
+  // regex on title+description, then merge + dedupe + sort by date.
+  async fetchHomeFeed(force = false) {
+    const ids = PrefStore.load();
+    if (ids.length === 0) return [];
+    const prefs = ids.map(id => PREFERENCES.find(p => p.id === id)).filter(Boolean);
+    if (prefs.length === 0) return [];
+
+    // Fetch each underlying category once (deduped across prefs that share one)
+    const neededCats = [...new Set(prefs.map(p => p.category))];
+    const catData = {};
+    await Promise.all(neededCats.map(async (cat) => {
+      catData[cat] = await this.fetchCategoryFromServer(cat, force) || [];
+    }));
+
+    // Filter and combine
+    const matchesPref = (article, pref) => {
+      if (!pref.includeRe && !pref.excludeRe) return true;
+      const hay = ((article.title || '') + ' ' + (article.description || '')).toLowerCase();
+      if (pref.excludeRe && pref.excludeRe.test(hay)) return false;
+      if (pref.includeRe && !pref.includeRe.test(hay)) return false;
+      return true;
+    };
+
+    const merged = [];
+    for (const pref of prefs) {
+      const articles = catData[pref.category] || [];
+      for (const a of articles) {
+        if (matchesPref(a, pref)) merged.push(a);
+      }
+    }
+
+    // Dedupe by URL (an article might match multiple prefs)
+    const seen = new Set();
+    const deduped = merged.filter(a => {
+      if (!a.url || seen.has(a.url)) return false;
+      seen.add(a.url);
+      return true;
+    });
+
+    // Newest first
+    deduped.sort((a, b) => new Date(b.publishedAt) - new Date(a.publishedAt));
+
+    // Mark fetched-at now (Home is a fresh aggregation)
+    this._lastFetchedAt = Date.now();
+    return deduped;
   }
 
   async searchAll(query) {
@@ -514,6 +679,7 @@ class NewsApp {
   // ── Nav rendering ──
   renderNav() {
     const items = [
+      { id: '__home__',  icon: '🏠', isSpecial: true },
       { id: '__saved__', icon: '⭐', count: Bookmarks.all().length, isSpecial: true },
       ...this.categories,
     ];
@@ -535,8 +701,9 @@ class NewsApp {
     this.els.navList.querySelectorAll('.nav-item').forEach(btn => {
       btn.addEventListener('click', () => {
         const id = btn.dataset.category;
-        if (id === '__saved__') this.openSaved();
-        else this.selectCategory(id);
+        if (id === '__saved__')      this.openSaved();
+        else if (id === '__home__')  this.openHome();
+        else                         this.selectCategory(id);
         this.closeSidebar();
       });
     });
@@ -551,6 +718,23 @@ class NewsApp {
     this.els.searchInput.value = '';
     this.updateNavActive();
     this.els.headerTitle.textContent = this.t('categories', id) || id;
+    this.loadNews();
+  }
+
+  openHome() {
+    // Clicking Home a SECOND time (while already in Home) re-opens the
+    // preferences picker — gives the user an easy way to edit their topics.
+    if (this.category === '__home__' && !this.searchMode && !this.savedMode) {
+      this.openOnboarding(false);
+      return;
+    }
+    this.category = '__home__';
+    this.searchMode = false;
+    this.savedMode = false;
+    this.searchQuery = '';
+    this.els.searchInput.value = '';
+    this.updateNavActive();
+    this.els.headerTitle.textContent = this.t('categories', '__home__');
     this.loadNews();
   }
 
@@ -655,9 +839,15 @@ class NewsApp {
       if (items.length === 0) {
         if (!initial || initial.length === 0) {
           this.hideSkeleton();
-          this.showEmpty(this.searchMode
-            ? this.t('states', 'noResultsSearch', this.searchQuery)
-            : this.t('states', 'noArticles'));
+          if (this.searchMode) {
+            this.showEmpty(this.t('states', 'noResultsSearch', this.searchQuery));
+          } else if (this.category === '__home__') {
+            // Home has no articles — usually means no prefs picked yet.
+            this.showEmpty(this.t('states', 'noHomePrefs'));
+            this.addHomeCustomizeButton();
+          } else {
+            this.showEmpty(this.t('states', 'noArticles'));
+          }
           this.hideLoadMore();
         }
         return;
@@ -1038,7 +1228,11 @@ class NewsApp {
     this.els.emptyMsg.textContent = msg;
     this.els.emptyState.hidden = false;
   }
-  hideEmpty() { this.els.emptyState.hidden = true; }
+  hideEmpty() {
+    this.els.emptyState.hidden = true;
+    const cta = this.$('homeCustomizeBtn');
+    if (cta) cta.remove();   // tear down so it doesn't pile up across re-renders
+  }
   showLoadMore() { this.els.loadMoreWrap.hidden = false; }
   hideLoadMore() { this.els.loadMoreWrap.hidden = true; }
 
