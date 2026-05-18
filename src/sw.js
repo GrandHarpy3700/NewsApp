@@ -1,7 +1,8 @@
 // MyNews service worker.
-// Caches the app shell so it opens instantly and works offline (cached UI shows; news needs internet).
+// Strategy: STALE-WHILE-REVALIDATE everywhere — instant page loads from cache,
+// fresh data fetched in the background. The user never waits on a cold server.
 
-const CACHE_NAME = 'mynews-v2';
+const CACHE_NAME = 'mynews-v3';
 const APP_SHELL = [
   './',
   './index.html',
@@ -26,38 +27,45 @@ self.addEventListener('activate', (event) => {
   );
 });
 
+// Stale-while-revalidate handler — serves the cached response immediately if
+// available, then fetches a fresh copy in the background and updates the cache
+// for next time. Falls back to whatever's in cache if the network is dead.
+function staleWhileRevalidate(req) {
+  return caches.open(CACHE_NAME).then(async (cache) => {
+    const cached = await cache.match(req);
+    const network = fetch(req)
+      .then((res) => {
+        // Only cache real, successful, basic responses
+        if (res && res.ok && (res.type === 'basic' || res.type === 'cors')) {
+          cache.put(req, res.clone()).catch(() => {});
+        }
+        return res;
+      })
+      .catch(() => cached);   // network failed → fall back to cache
+    return cached || network; // cache hit → return instantly; otherwise wait
+  });
+}
+
 self.addEventListener('fetch', (event) => {
   const req = event.request;
   if (req.method !== 'GET') return;
 
   const url = new URL(req.url);
 
-  // For RSS API calls: network-first, fall back to cached (if any).
-  if (url.hostname === 'api.rss2json.com') {
-    event.respondWith(
-      fetch(req).then(res => {
-        const clone = res.clone();
-        caches.open(CACHE_NAME).then(c => c.put(req, clone));
-        return res;
-      }).catch(() => caches.match(req))
-    );
-    return;
-  }
-
-  // For app shell + same-origin: network-first so updates always reach the user,
-  // fall back to cache when offline.
+  // Same-origin (app shell + /api/*) → stale-while-revalidate
   if (url.origin === self.location.origin) {
-    event.respondWith(
-      fetch(req).then(res => {
-        const clone = res.clone();
-        caches.open(CACHE_NAME).then(c => c.put(req, clone));
-        return res;
-      }).catch(() => caches.match(req))
-    );
+    event.respondWith(staleWhileRevalidate(req));
     return;
   }
 
-  // Everything else (images from news sites etc.): pass through with cache fallback.
+  // External RSS proxy (used only in static-PWA fallback mode) → same strategy
+  if (url.hostname === 'api.rss2json.com') {
+    event.respondWith(staleWhileRevalidate(req));
+    return;
+  }
+
+  // Everything else (article images, third-party CDNs) — pass through with
+  // cache fallback only if the network is down.
   event.respondWith(
     fetch(req).catch(() => caches.match(req))
   );

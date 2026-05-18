@@ -35,13 +35,13 @@ const I18N = {
   },
 };
 
-const API_BASE = '/api';
-const RSS2JSON = 'https://api.rss2json.com/v1/api.json?rss_url=';
-const FEED_TIMEOUT_MS = 6000;
-const CATEGORY_CACHE_TTL_MS = 5 * 60 * 1000;
-const OG_IMAGE_CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
-const OG_IMAGE_CONCURRENCY = 8;
-const PAGE_SIZE = 30;
+const API_BASE = '/api'; // Root path for the app's local backend API
+const RSS2JSON = 'https://api.rss2json.com/v1/api.json?rss_url='; // Public RSS-to-JSON proxy for fallback fetching
+const FEED_TIMEOUT_MS = 6000; // Timeout for each individual RSS feed request
+const CATEGORY_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes cache lifetime for category data in sessionStorage
+const OG_IMAGE_CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days cache life for og:image lookups
+const OG_IMAGE_CONCURRENCY = 8; // Max concurrent og:image fetches to avoid overload
+const PAGE_SIZE = 30; // Number of articles shown per page/load-more batch
 
 // Fallback list (used only if server unreachable, e.g. deployed-PWA mode)
 const FALLBACK_CATEGORIES = [
@@ -93,31 +93,31 @@ const FALLBACK_CATEGORIES = [
 
 // ── Persistent stores (localStorage) ──
 const Bookmarks = {
-  KEY: 'mynews:bookmarks',
-  _cache: null,
+  KEY: 'mynews:bookmarks', // Storage key for saved articles
+  _cache: null, // In-memory cache to avoid repeated JSON parsing
   _load() {
-    if (this._cache) return this._cache;
+    if (this._cache) return this._cache; // return cached list if available
     try { this._cache = JSON.parse(localStorage.getItem(this.KEY) || '[]'); }
     catch { this._cache = []; }
     return this._cache;
   },
-  all() { return [...this._load()]; },
-  has(url) { return this._load().some(a => a.url === url); },
+  all() { return [...this._load()]; }, // Return a copy of all saved articles
+  has(url) { return this._load().some(a => a.url === url); }, // Check if a URL is bookmarked
   add(article) {
     const list = this._load();
-    if (list.some(a => a.url === article.url)) return;
-    list.unshift({ ...article, bookmarkedAt: Date.now() });
+    if (list.some(a => a.url === article.url)) return; // avoid duplicates
+    list.unshift({ ...article, bookmarkedAt: Date.now() }); // newest first
     this._cache = list;
     try { localStorage.setItem(this.KEY, JSON.stringify(list)); } catch {}
   },
   remove(url) {
-    const list = this._load().filter(a => a.url !== url);
+    const list = this._load().filter(a => a.url !== url); // drop matching article
     this._cache = list;
     try { localStorage.setItem(this.KEY, JSON.stringify(list)); } catch {}
   },
   toggle(article) {
     if (this.has(article.url)) { this.remove(article.url); return false; }
-    this.add(article); return true;
+    this.add(article); return true; // add if not present, remove if present
   },
 };
 
@@ -143,9 +143,9 @@ const PREFERENCES = [
 ];
 
 const PrefStore = {
-  KEY: 'mynews:prefs',
-  ONBOARDED_KEY: 'mynews:onboarded',
-  _cache: null,
+  KEY: 'mynews:prefs', // Storage key for selected Home feed preferences
+  ONBOARDED_KEY: 'mynews:onboarded', // Storage key for first-run onboarding state
+  _cache: null, // In-memory copy of selected preference IDs
   load() {
     if (this._cache) return this._cache;
     try { this._cache = JSON.parse(localStorage.getItem(this.KEY) || '[]'); }
@@ -153,7 +153,7 @@ const PrefStore = {
     return this._cache;
   },
   save(ids) {
-    this._cache = [...new Set(ids)];
+    this._cache = [...new Set(ids)]; // dedupe preference IDs
     try { localStorage.setItem(this.KEY, JSON.stringify(this._cache)); } catch {}
   },
   hasOnboarded() {
@@ -163,34 +163,34 @@ const PrefStore = {
   setOnboarded(v = true) {
     try { localStorage.setItem(this.ONBOARDED_KEY, v ? '1' : '0'); } catch {}
   },
-  hasAny() { return this.load().length > 0; },
+  hasAny() { return this.load().length > 0; }, // true if the user selected any preferences
 };
 
 // ── Persistent: recent searches (max 8, newest first) ──
 const RecentSearches = {
-  KEY: 'mynews:recent-searches',
-  MAX: 8,
+  KEY: 'mynews:recent-searches', // Storage key for recent search terms
+  MAX: 8, // Keep at most 8 recent search items
   all() {
     try { return JSON.parse(localStorage.getItem(this.KEY) || '[]'); }
     catch { return []; }
   },
   add(q) {
-    if (!q || q.length < 2) return;
-    let list = this.all().filter(x => x !== q);
-    list.unshift(q);
-    list = list.slice(0, this.MAX);
+    if (!q || q.length < 2) return; // ignore empty or one-character queries
+    let list = this.all().filter(x => x !== q); // remove duplicates
+    list.unshift(q); // newest first
+    list = list.slice(0, this.MAX); // enforce max size
     try { localStorage.setItem(this.KEY, JSON.stringify(list)); } catch {}
   },
   remove(q) {
     const list = this.all().filter(x => x !== q);
     try { localStorage.setItem(this.KEY, JSON.stringify(list)); } catch {}
   },
-  clear() { try { localStorage.removeItem(this.KEY); } catch {} },
+  clear() { try { localStorage.removeItem(this.KEY); } catch {} }, // clear history
 };
 
 const ReadTracker = {
-  KEY: 'mynews:read',
-  MAX: 1000,
+  KEY: 'mynews:read', // Storage key for URLs marked as read
+  MAX: 1000, // Keep only the last 1000 read URLs
   _cache: null,
   _load() {
     if (this._cache) return this._cache;
@@ -198,13 +198,13 @@ const ReadTracker = {
     catch { this._cache = new Set(); }
     return this._cache;
   },
-  isRead(url) { return this._load().has(url); },
+  isRead(url) { return this._load().has(url); }, // Check if article has been read
   markRead(url) {
     const set = this._load();
-    if (set.has(url)) return;
+    if (set.has(url)) return; // already marked read
     set.add(url);
     let arr = [...set];
-    if (arr.length > this.MAX) arr = arr.slice(-this.MAX);
+    if (arr.length > this.MAX) arr = arr.slice(-this.MAX); // trim oldest if needed
     this._cache = new Set(arr);
     try { localStorage.setItem(this.KEY, JSON.stringify(arr)); } catch {}
   },
@@ -214,25 +214,25 @@ const ReadTracker = {
 class NewsApp {
   constructor() {
     this.lang = 'en';                                       // English-only UI
-    document.documentElement.setAttribute('lang', this.lang);
+    document.documentElement.setAttribute('lang', this.lang); // Set HTML language attribute
     // Default to Home if the user has any preferences saved, else Global.
     this.category = PrefStore.hasAny() ? '__home__' : 'global';
-    this.allArticles = [];
-    this.totalResults = 0;
-    this.shownCount = 0;
-    this.loading = false;
-    this._loadReqId = 0;
-    this.searchMode = false;
-    this.searchQuery = '';
-    this.savedMode = false;
-    this.categories = FALLBACK_CATEGORIES;
+    this.allArticles = []; // currently loaded article list
+    this.totalResults = 0; // total articles available for current query/category
+    this.shownCount = 0; // articles already rendered to the page
+    this.loading = false; // whether a load operation is in progress
+    this._loadReqId = 0; // request counter to ignore stale responses
+    this.searchMode = false; // whether current view is search results
+    this.searchQuery = ''; // current search query text
+    this.savedMode = false; // whether current view is saved/bookmarked articles
+    this.categories = FALLBACK_CATEGORIES; // category metadata fallback list
     this.serverAvailable = null; // unknown until first probe
-    this.refreshSeconds = 300;
-    this.refreshTimer = null;
-    this.imgObserver = null;
-    this._ogActive = 0;
+    this.refreshSeconds = 300; // countdown until next auto-refresh
+    this.refreshTimer = null; // refresh interval handle
+    this.imgObserver = null; // IntersectionObserver for lazy og:image loading
+    this._ogActive = 0; // count of active og:image fetches
 
-    this.$ = (id) => document.getElementById(id);
+    this.$ = (id) => document.getElementById(id); // shorthand DOM lookup
     this.els = {
       navList:        this.$('navList'),
       headerTitle:    this.$('headerTitle'),
@@ -262,23 +262,23 @@ class NewsApp {
       overlay:        this.$('overlay'),
     };
 
-    this.init();
+    this.init(); // Start app initialization
   }
 
   async init() {
-    this.applyStoredTheme();
-    this.bindEvents();
-    this.setupPullToRefresh();
-    this.setupScrollToTop();
+    this.applyStoredTheme(); // restore previously selected light/dark theme
+    this.bindEvents(); // wire UI events once at startup
+    this.setupPullToRefresh(); // enable touch pull-to-refresh on mobile
+    this.setupScrollToTop(); // enable floating scroll-to-top button
     // Try to load category metadata from server (gives us the canonical list).
     await this.loadCategoryMetadata();
-    this.renderNav();
+    this.renderNav(); // render sidebar/category navigation
     // First-run: show the preferences picker BEFORE loading news.
     if (!PrefStore.hasOnboarded()) {
       this.openOnboarding(true);
     }
-    this.loadNews();
-    this.startRefreshTimer();
+    this.loadNews(); // initial news load
+    this.startRefreshTimer(); // auto-refresh countdown
     // Pre-warm OTHER categories in the background so switching is instant.
     setTimeout(() => this.prewarmOtherCategories(), 1500);
     // Tick the "Updated X min ago" label every 30s so it counts up while idle.
@@ -462,7 +462,7 @@ class NewsApp {
   async loadCategoryMetadata() {
     try {
       const ctrl = new AbortController();
-      const t = setTimeout(() => ctrl.abort(), 3000);
+      const t = setTimeout(() => ctrl.abort(), 3000); // fail fast after 3 seconds
       const res = await fetch(`${API_BASE}/categories`, { signal: ctrl.signal });
       clearTimeout(t);
       if (!res.ok) throw new Error('not ok');
@@ -473,10 +473,10 @@ class NewsApp {
           const fb = FALLBACK_CATEGORIES.find(c => c.id === serverCat.id);
           return { ...serverCat, feeds: fb ? fb.feeds : [] };
         });
-        this.serverAvailable = true;
+        this.serverAvailable = true; // mark server as reachable
       }
     } catch (_) {
-      this.serverAvailable = false;
+      this.serverAvailable = false; // fallback to client RSS sources
       // keep this.categories = FALLBACK_CATEGORIES
     }
   }
@@ -487,7 +487,7 @@ class NewsApp {
       const raw = sessionStorage.getItem(key);
       if (!raw) return null;
       const { ts, data } = JSON.parse(raw);
-      if (Date.now() - ts > ttlMs) return null;
+      if (Date.now() - ts > ttlMs) return null; // expired
       return data;
     } catch { return null; }
   }
@@ -506,7 +506,7 @@ class NewsApp {
   // ── Fetch a category — server first, rss2json fallback ──
   async fetchCategoryFromServer(catId, force = false) {
     const ctrl = new AbortController();
-    const t = setTimeout(() => ctrl.abort(), 12000);
+    const t = setTimeout(() => ctrl.abort(), 12000); // allow enough time for server response
     try {
       const qs = force ? '?force=1' : '';
       const res = await fetch(`${API_BASE}/feeds/${encodeURIComponent(catId)}${qs}`, { signal: ctrl.signal });
@@ -519,7 +519,7 @@ class NewsApp {
       return data.articles;
     } catch {
       clearTimeout(t);
-      return null;
+      return null; // server fetch failed
     }
   }
 
@@ -552,7 +552,7 @@ class NewsApp {
     merged.sort((a, b) => new Date(b.publishedAt) - new Date(a.publishedAt));
     const seen = new Set();
     return merged.filter(a => {
-      if (!a.url || seen.has(a.url)) return false;
+      if (!a.url || seen.has(a.url)) return false; // remove duplicates and invalid items
       seen.add(a.url);
       return true;
     });
@@ -575,7 +575,7 @@ class NewsApp {
   // For each pref: fetch its underlying category, apply include/exclude
   // regex on title+description, then merge + dedupe + sort by date.
   async fetchHomeFeed(force = false) {
-    const ids = PrefStore.load();
+    const ids = PrefStore.load(); // loaded preference IDs
     if (ids.length === 0) return [];
     const prefs = ids.map(id => PREFERENCES.find(p => p.id === id)).filter(Boolean);
     if (prefs.length === 0) return [];
@@ -587,7 +587,6 @@ class NewsApp {
       catData[cat] = await this.fetchCategoryFromServer(cat, force) || [];
     }));
 
-    // Filter and combine
     const matchesPref = (article, pref) => {
       if (!pref.includeRe && !pref.excludeRe) return true;
       const hay = ((article.title || '') + ' ' + (article.description || '')).toLowerCase();
@@ -782,9 +781,9 @@ class NewsApp {
   // ── Load + Render (stale-while-revalidate) ──
   async loadNews(append = false, forceFresh = false) {
     if (this.savedMode) { this.renderSaved(); return; }
-    if (append && this.loading) return;
+    if (append && this.loading) return; // avoid duplicate load-more while already loading
     this.loading = true;
-    const reqId = ++this._loadReqId;
+    const reqId = ++this._loadReqId; // monotonic request id for stale-response handling
     const isStale = () => reqId !== this._loadReqId;
 
     const cacheKey = this.searchMode ? `q:${this.searchQuery}` : `cat:${this.category}`;
@@ -925,14 +924,14 @@ class NewsApp {
 
   buildCard(article, featured = false) {
     const el = document.createElement('article');
-    const isRead = ReadTracker.isRead(article.url);
+    const isRead = ReadTracker.isRead(article.url); // whether the article was previously opened
     el.className = (featured ? 'card featured' : 'card') + (isRead ? ' read' : '');
-    el.setAttribute('tabindex', '0');
+    el.setAttribute('tabindex', '0'); // make card keyboard-focusable
 
     const ageMs = Date.now() - new Date(article.publishedAt).getTime();
     const ageMin = ageMs / 60000;
-    const isBreaking = /\bbreaking\b/i.test(article.title);
-    const isNew = ageMin >= 0 && ageMin < 120;
+    const isBreaking = /\bbreaking\b/i.test(article.title); // detect breaking news
+    const isNew = ageMin >= 0 && ageMin < 120; // new if published within 2 hours
     const badges = [
       isBreaking ? `<span class="badge badge-breaking">${this.t('card','breaking')}</span>` : '',
       (!isBreaking && isNew) ? `<span class="badge badge-new">${this.t('card','new')}</span>` : '',
@@ -947,7 +946,7 @@ class NewsApp {
     const placeholderInitial = (sourceName[0] || '?').toUpperCase();
     const desc = article.description ? `<p class="card-desc">${this.escHtml(article.description)}</p>` : '';
     const readingMin = article.readingMin || 1;
-    const bookmarked = Bookmarks.has(article.url);
+    const bookmarked = Bookmarks.has(article.url); // whether this article is bookmarked
 
     el.innerHTML = `
       <div class="card-img-wrap">
